@@ -1,4 +1,3 @@
-import { MemoryVectorStore } from "langchain/vectorstores/memory";
 // 호출주소: http://localhost:3000/api/agent/pagebot
 // 웹페이지 지식베이스 Agent 챗봇 구현하기
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -65,9 +64,7 @@ export default async function handler(
       });
 
       //Step3: cheerio를 이용해 특정 웹페이지에서 내용을 크롤링실시하기
-      const loader = new CheerioWebBaseLoader(
-        "https://blog.naver.com/gudwls2777"
-      );
+      const loader = new CheerioWebBaseLoader("https://mixedcode.com/blog/31");
 
       //웹페이지 내용 로딩하기
       const rawDocs = await loader.load();
@@ -83,17 +80,24 @@ export default async function handler(
       const docs = await splitter.splitDocuments(rawDocs);
 
       //Step5: Splitting된 문서내 단어들을 임베딩(벡터화처리)처리해서 메모리벡터저장소에 저장하기
-      //MemoryVectorStore.fromDocuments(임베딩된문서, 사용할 임베딩 처리기)
+      //MemoryVectorStore.fromDocuments(임베딩된문서, 사용할 임베딩 git remote add origin처리기)
       const vectorStore = await MemoryVectorStore.fromDocuments(
         docs,
         new OpenAIEmbeddings()
       );
 
+      //Step6: 메모리 벡터 저장소에서 사용자 질문으로 Query하기
+      //vector저장소 기반 검색기 변수 정의
+      const retriever = vectorStore.asRetriever();
+      const searchResult = await retriever.invoke(prompt);
+
+      console.log("벡터저장소 쿼리 검색결과: ", searchResult);
+
       //프론트엔드로 반환되는 메시지 데이터 생성하기
       const resultMsg: IMemberMessage = {
         user_type: UserType.BOT,
         nick_name: "bot",
-        message: "쉿 섹스중",
+        message: searchResult[0].pageContent,
         send_date: new Date(),
       };
 
